@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Добавлено для Clipboard
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/proxy_provider.dart';
-import '../providers/history_provider.dart'; // Добавлено для historyRepositoryProvider
+import '../providers/history_provider.dart';
 import '../providers/selection_provider.dart';
 import '../data/services/proxy_checker_service.dart';
-import '../data/services/link_parser_service.dart'; // Добавлено для LinkParserService
+import '../data/services/link_parser_service.dart';
 import '../widgets/proxy_tile.dart';
 import '../widgets/add_proxy_bottom_sheet.dart';
 import '../domain/entities/proxy.dart';
@@ -29,14 +29,41 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     final selectedIds = ref.watch(selectedProxyIdsProvider);
     
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: Text(_isSelectionMode ? 'Выбрано ${selectedIds.length}' : 'Мои прокси'),
+        centerTitle: false,
+        elevation: 0,
         actions: [
           if (!_isSelectionMode)
-            IconButton(
-              icon: const Icon(Icons.speed),
-              onPressed: _startParallelCheck,
-              tooltip: 'Быстрая проверка',
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'parallel') _startParallelCheck();
+                if (value == 'sequential') _startSequentialCheck();
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'parallel',
+                  child: Row(
+                    children: [
+                      Icon(Icons.speed, size: 20),
+                      SizedBox(width: 8),
+                      Text('Быстрая проверка (параллельно)'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'sequential',
+                  child: Row(
+                    children: [
+                      Icon(Icons.timer, size: 20),
+                      SizedBox(width: 8),
+                      Text('Обычная проверка (последовательно)'),
+                    ],
+                  ),
+                ),
+              ],
+              child: const Icon(Icons.speed),
             ),
           if (!_isSelectionMode)
             IconButton(
@@ -61,47 +88,111 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
       body: Column(
         children: [
           // Секция добавления ссылки
-          Padding(
-            padding: const EdgeInsets.all(16),
+          Container(
+            margin: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _linkController,
-                    decoration: const InputDecoration(
-                      labelText: 'Вставить ссылку tg://proxy или socks5://',
-                      border: OutlineInputBorder(),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.shade200,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _linkController,
+                      decoration: InputDecoration(
+                        hintText: 'Вставить ссылку tg://proxy или socks5://',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _addProxyFromLink,
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    onPressed: _addProxyFromLink,
+                  ),
                 ),
               ],
             ),
           ),
+          
           // Список прокси
           Expanded(
             child: proxiesAsync.when(
               data: (proxies) {
                 if (proxies.isEmpty) {
-                  return const Center(child: Text('Нет прокси. Добавьте первую ссылку.'));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.wifi_off,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Нет прокси',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Добавьте первую ссылку выше',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
                 
                 return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 16),
                   itemCount: proxies.length,
                   itemBuilder: (context, index) {
                     final proxy = proxies[index];
                     final isSelected = selectedIds.contains(proxy.id);
                     
                     if (_isSelectionMode) {
-                      return CheckboxListTile(
-                        value: isSelected,
-                        onChanged: (_) => _toggleSelection(proxy.id),
-                        title: Text('${proxy.server}:${proxy.port}'),
-                        subtitle: Text(proxy.type.name),
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: CheckboxListTile(
+                          value: isSelected,
+                          onChanged: (_) => _toggleSelection(proxy.id),
+                          title: Text(proxy.server),
+                          subtitle: Text('Порт: ${proxy.port}'),
+                          secondary: Text(proxy.type.name),
+                        ),
                       );
                     }
                     
@@ -139,15 +230,35 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Ошибка: $err')),
+              loading: () => const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Загрузка прокси...'),
+                  ],
+                ),
+              ),
+              error: (err, stack) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+                    const SizedBox(height: 16),
+                    Text('Ошибка: $err'),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddBottomSheet(),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Добавить прокси'),
+        elevation: 2,
       ),
     );
   }
@@ -166,10 +277,17 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Удалить выбранные'),
-        content: const Text('Вы уверены?'),
+        content: const Text('Вы уверены, что хотите удалить выбранные прокси?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Удалить'),
+          ),
         ],
       ),
     );
@@ -185,7 +303,10 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Удалено ${selectedIds.length} прокси')),
+          SnackBar(
+            content: Text('Удалено ${selectedIds.length} прокси'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     }
@@ -204,7 +325,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Проверка прокси...')),
+        const SnackBar(content: Text('🚀 Быстрая проверка прокси...')),
       );
     }
     
@@ -218,8 +339,55 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     ref.invalidate(proxyListProvider);
     
     if (mounted) {
+      final onlineCount = updated.where((p) => p.lastStatus == ProxyStatus.online).length;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Проверено ${updated.length} прокси')),
+        SnackBar(
+          content: Text('✅ Проверено ${updated.length} прокси. Доступно: $onlineCount'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+  
+  Future<void> _startSequentialCheck() async {
+    final proxies = await ref.read(proxyListProvider.future);
+    if (proxies.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нет прокси для проверки')),
+        );
+      }
+      return;
+    }
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🔄 Последовательная проверка прокси...')),
+      );
+    }
+    
+    final List<ProxyEntity> updated = [];
+    for (final proxy in proxies) {
+      final result = await ProxyCheckerService.checkAllParallel([proxy]);
+      updated.add(result.first);
+      await ref.read(proxyRepositoryProvider).update(result.first);
+      
+      if (mounted) {
+        // Обновляем UI постепенно
+        ref.invalidate(proxyListProvider);
+      }
+    }
+    
+    await ref.read(historyRepositoryProvider).addSnapshot(updated);
+    ref.invalidate(proxyListProvider);
+    
+    if (mounted) {
+      final onlineCount = updated.where((p) => p.lastStatus == ProxyStatus.online).length;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Проверено ${updated.length} прокси. Доступно: $onlineCount'),
+          backgroundColor: Colors.green,
+        ),
       );
     }
   }
@@ -235,11 +403,17 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
       _linkController.clear();
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Прокси добавлен')),
+        const SnackBar(
+          content: Text('✅ Прокси добавлен'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
+        SnackBar(
+          content: Text('❌ Ошибка: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -248,6 +422,9 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => const AddProxyBottomSheet(),
     );
   }
@@ -255,29 +432,43 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
   void _showShareOptions(ProxyEntity proxy) {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.copy),
+              leading: const Icon(Icons.copy, color: Colors.blue),
               title: const Text('Скопировать ссылку'),
               onTap: () {
                 Navigator.pop(context);
                 Clipboard.setData(ClipboardData(text: proxy.fullLink));
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ссылка скопирована')),
+                  const SnackBar(content: Text('📋 Ссылка скопирована')),
                 );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.share),
+              leading: const Icon(Icons.share, color: Colors.green),
               title: const Text('Поделиться'),
               onTap: () {
                 Navigator.pop(context);
                 Share.share(proxy.fullLink);
               },
             ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -289,7 +480,10 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     ref.invalidate(proxyListProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Прокси удален')),
+        const SnackBar(
+          content: Text('🗑️ Прокси удален'),
+          backgroundColor: Colors.orange,
+        ),
       );
     }
   }
@@ -302,14 +496,18 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
         title: const Text('Редактировать прокси'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: 'Новая ссылка'),
+          decoration: const InputDecoration(
+            labelText: 'Новая ссылка',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Отмена'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () async {
               try {
                 final newProxy = LinkParserService.fromLink(controller.text);
@@ -319,13 +517,13 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
                 if (mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Прокси обновлен')),
+                    const SnackBar(content: Text('✅ Прокси обновлен')),
                   );
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Ошибка: $e')),
+                    SnackBar(content: Text('❌ Ошибка: $e')),
                   );
                 }
               }

@@ -11,47 +11,139 @@ class ProxyTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: proxy.lastStatus == ProxyStatus.online 
-            ? Colors.green 
-            : (proxy.lastStatus == ProxyStatus.offline ? Colors.red : Colors.grey),
-        radius: 8,
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-      title: Text(
-        '${proxy.server}:${proxy.port}',
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // MTProto secret
-          if (proxy is MtprotoProxy)
-            Text(
-              _truncateSecret((proxy as MtprotoProxy).secret),
-              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-            ),
-          // SOCKS5 username
-          if (proxy is Socks5Proxy && (proxy as Socks5Proxy).username != null)
-            Text(
-              'user: ${(proxy as Socks5Proxy).username}',
-              style: const TextStyle(fontSize: 12),
-            ),
-          // Пинг
-          Text(
-            proxy.lastPing != null ? 'Пинг: ${proxy.lastPing} ms' : 'Не проверен',
-            style: const TextStyle(fontSize: 12),
+      child: InkWell(
+        onLongPress: onShare,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Статус индикатор (кружок)
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _getStatusColor(),
+                ),
+              ),
+              const SizedBox(width: 16),
+              
+              // Информация о прокси
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Сервер
+                    Text(
+                      proxy.server,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    
+                    // Порт
+                    Text(
+                      'Порт: ${proxy.port}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    
+                    // Secret (только для MTProto)
+                    if (proxy is MtprotoProxy)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Ключ: ${_truncateSecret((proxy as MtprotoProxy).secret)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                    
+                    // Username (только для SOCKS5 с авторизацией)
+                    if (proxy is Socks5Proxy && (proxy as Socks5Proxy).username != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Логин: ${(proxy as Socks5Proxy).username}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                    
+                    const SizedBox(height: 6),
+                    
+                    // Статус и пинг
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor().withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _getStatusText(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: _getStatusColor(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Кнопка меню (три точки)
+              IconButton(
+                icon: const Icon(Icons.more_vert, size: 20),
+                onPressed: onShare,
+                tooltip: 'Действия',
+              ),
+            ],
           ),
-        ],
-      ),
-      trailing: IconButton(
-        icon: const Icon(Icons.more_vert),
-        onPressed: onShare,
+        ),
       ),
     );
   }
-
-  String _truncateSecret(String secret, {int maxLength = 30}) {
+  
+  Color _getStatusColor() {
+    switch (proxy.lastStatus) {
+      case ProxyStatus.online:
+        return Colors.green;
+      case ProxyStatus.offline:
+        return Colors.red;
+      case ProxyStatus.unknown:
+        return Colors.grey;
+    }
+  }
+  
+  String _getStatusText() {
+    switch (proxy.lastStatus) {
+      case ProxyStatus.online:
+        return '✅ Доступен • ${proxy.lastPing} ms';
+      case ProxyStatus.offline:
+        return '❌ Недоступен';
+      case ProxyStatus.unknown:
+        return '⏳ Не проверен';
+    }
+  }
+  
+  String _truncateSecret(String secret, {int maxLength = 20}) {
     if (secret.length <= maxLength) return secret;
     return '${secret.substring(0, maxLength)}...';
   }
