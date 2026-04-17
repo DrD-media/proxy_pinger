@@ -86,23 +86,56 @@ class ProxyTile extends StatelessWidget {
                         ),
                       ),
                     
-                    const SizedBox(height: 6),
-                    
-                    // Статус и пинг
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor().withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _getStatusText(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: _getStatusColor(),
+                    // Пароль (только для SOCKS5 с авторизацией)
+                    if (proxy is Socks5Proxy && (proxy as Socks5Proxy).password != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Пароль: ${(proxy as Socks5Proxy).password}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
                         ),
                       ),
+                    
+                    const SizedBox(height: 6),
+                    
+                    // Статус и тип прокси в одной строке
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor().withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _getStatusText(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: _getStatusColor(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            proxy.type.name.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -135,7 +168,7 @@ class ProxyTile extends StatelessWidget {
   String _getStatusText() {
     switch (proxy.lastStatus) {
       case ProxyStatus.online:
-        return '✅ Доступен • ${proxy.lastPing} ms';
+        return '✅ ${proxy.lastPing} ms';
       case ProxyStatus.offline:
         return '❌ Недоступен';
       case ProxyStatus.unknown:

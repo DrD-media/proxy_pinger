@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:share_plus/share_plus.dart';
 import '../providers/proxy_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/selection_provider.dart';
@@ -11,6 +9,7 @@ import '../data/services/link_parser_service.dart';
 import '../widgets/proxy_tile.dart';
 import '../widgets/add_proxy_bottom_sheet.dart';
 import '../domain/entities/proxy.dart';
+import '../widgets/proxy_info_bottom_sheet.dart';
 
 class MyProxiesScreen extends ConsumerStatefulWidget {
   const MyProxiesScreen({super.key});
@@ -20,6 +19,7 @@ class MyProxiesScreen extends ConsumerStatefulWidget {
 }
 
 class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
+  String _currentCheckMode = 'parallel'; // 'parallel' или 'sequential'
   bool _isSelectionMode = false;
   final _linkController = TextEditingController();
   
@@ -36,34 +36,58 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
         elevation: 0,
         actions: [
           if (!_isSelectionMode)
+            // Кнопка проверки (сразу запускает выбранный режим)
+            IconButton(
+              icon: const Icon(Icons.speed),
+              onPressed: _startCheckWithCurrentMode,
+              tooltip: 'Проверить прокси',
+            ),
+          if (!_isSelectionMode)
+            // Кнопка выбора режима проверки
             PopupMenuButton<String>(
               onSelected: (value) {
-                if (value == 'parallel') _startParallelCheck();
-                if (value == 'sequential') _startSequentialCheck();
+                setState(() {
+                  _currentCheckMode = value;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Режим проверки: ${value == 'parallel' ? 'Быстрая (параллельная)' : 'Обычная (последовательная)'}'),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
               },
               itemBuilder: (context) => [
                 const PopupMenuItem(
                   value: 'parallel',
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.speed, size: 20),
-                      SizedBox(width: 8),
-                      Text('Быстрая проверка (параллельно)'),
+                      Text('⚡ Быстрая проверка'),
+                      Text(
+                        '(параллельная)',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
                     ],
                   ),
                 ),
                 const PopupMenuItem(
                   value: 'sequential',
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.timer, size: 20),
-                      SizedBox(width: 8),
-                      Text('Обычная проверка (последовательно)'),
+                      Text('🔄 Обычная проверка'),
+                      Text(
+                        '(последовательная)',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
                     ],
                   ),
                 ),
               ],
-              child: const Icon(Icons.speed),
+              icon: const Icon(Icons.settings_applications),
+              tooltip: 'Режим проверки',
             ),
           if (!_isSelectionMode)
             IconButton(
@@ -391,6 +415,14 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
       );
     }
   }
+
+  Future<void> _startCheckWithCurrentMode() async {
+    if (_currentCheckMode == 'parallel') {
+      await _startParallelCheck();
+    } else {
+      await _startSequentialCheck();
+    }
+  }
   
   void _addProxyFromLink() {
     final link = _linkController.text.trim();
@@ -430,49 +462,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
   }
   
   void _showShareOptions(ProxyEntity proxy) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.copy, color: Colors.blue),
-              title: const Text('Скопировать ссылку'),
-              onTap: () {
-                Navigator.pop(context);
-                Clipboard.setData(ClipboardData(text: proxy.fullLink));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('📋 Ссылка скопирована')),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.share, color: Colors.green),
-              title: const Text('Поделиться'),
-              onTap: () {
-                Navigator.pop(context);
-                Share.share(proxy.fullLink);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
+    showProxyInfoBottomSheet(context: context, proxy: proxy);
   }
   
   Future<void> _deleteProxy(String id) async {
@@ -492,7 +482,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     final controller = TextEditingController(text: proxy.fullLink);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Редактировать прокси'),
         content: TextField(
           controller: controller,
@@ -504,7 +494,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Отмена'),
           ),
           FilledButton(
@@ -515,7 +505,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
                 await ref.read(proxyRepositoryProvider).add(newProxy);
                 ref.invalidate(proxyListProvider);
                 if (mounted) {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('✅ Прокси обновлен')),
                   );
