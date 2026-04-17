@@ -10,6 +10,7 @@ import '../widgets/proxy_tile.dart';
 import '../widgets/add_proxy_bottom_sheet.dart';
 import '../domain/entities/proxy.dart';
 import '../widgets/proxy_info_bottom_sheet.dart';
+import '../services/file_import_export_service.dart';
 
 class MyProxiesScreen extends ConsumerStatefulWidget {
   const MyProxiesScreen({super.key});
@@ -36,14 +37,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
         elevation: 0,
         actions: [
           if (!_isSelectionMode)
-            // Кнопка проверки (сразу запускает выбранный режим)
-            IconButton(
-              icon: const Icon(Icons.speed),
-              onPressed: _startCheckWithCurrentMode,
-              tooltip: 'Проверить прокси',
-            ),
-          if (!_isSelectionMode)
-            // Кнопка выбора режима проверки
+            // 1. Кнопка выбора режима проверки (только иконка)
             PopupMenuButton<String>(
               onSelected: (value) {
                 setState(() {
@@ -51,53 +45,134 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Режим проверки: ${value == 'parallel' ? 'Быстрая (параллельная)' : 'Обычная (последовательная)'}'),
-                    duration: const Duration(seconds: 1),
+                    content: Text('Режим проверки: ${value == 'parallel' ? '⚡ Быстрая (параллельная)' : '🔄 Обычная (последовательная)'}'),
+                    duration: const Duration(seconds: 2),
                   ),
                 );
               },
+              icon: Icon(
+                _currentCheckMode == 'parallel' ? Icons.speed : Icons.timer,
+                color: _currentCheckMode == 'parallel' ? Colors.green : Colors.orange,
+              ),
+              tooltip: _currentCheckMode == 'parallel' ? 'Режим: быстрая проверка' : 'Режим: обычная проверка',
               itemBuilder: (context) => [
                 const PopupMenuItem(
                   value: 'parallel',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('⚡ Быстрая проверка'),
-                      Text(
-                        '(параллельная)',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                    ],
+                  child: SizedBox(
+                    width: 200,
+                    child: Row(
+                      children: [
+                        Icon(Icons.speed, color: Colors.green),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('⚡ Быстрая проверка'),
+                              Text(
+                                'Параллельная - все прокси сразу',
+                                style: TextStyle(fontSize: 11, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const PopupMenuItem(
                   value: 'sequential',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                  child: SizedBox(
+                    width: 200,
+                    child: Row(
+                      children: [
+                        Icon(Icons.timer, color: Colors.orange),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('🔄 Обычная проверка'),
+                              Text(
+                                'Последовательная - по одному',
+                                style: TextStyle(fontSize: 11, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (!_isSelectionMode)
+            // 2. Кнопка запуска проверки
+            IconButton(
+              icon: const Icon(Icons.play_arrow),
+              onPressed: _startCheckWithCurrentMode,
+              tooltip: 'Запустить проверку',
+              color: Colors.green,
+            ),
+          if (!_isSelectionMode)
+            // 3. Кнопка выбора режима множественного удаления
+            IconButton(
+              icon: const Icon(Icons.checklist),
+              onPressed: () => setState(() => _isSelectionMode = true),
+              tooltip: 'Выбрать несколько',
+            ),
+          if (!_isSelectionMode)
+            // 4. Кнопка меню (экспорт/импорт)
+            PopupMenuButton<String>(
+              onSelected: (value) async {
+                if (value == 'export') {
+                  await _exportProxies();
+                } else if (value == 'export_json') {
+                  await _exportProxiesToJson();
+                } else if (value == 'import') {
+                  await _importProxies();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'export',
+                  child: Row(
                     children: [
-                      Text('🔄 Обычная проверка'),
-                      Text(
-                        '(последовательная)',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
+                      Icon(Icons.save_alt, size: 20),
+                      SizedBox(width: 12),
+                      Text('Экспорт в TXT'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'export_json',
+                  child: Row(
+                    children: [
+                      Icon(Icons.save_alt, size: 20),
+                      SizedBox(width: 12),
+                      Text('Экспорт в JSON'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'import',
+                  child: Row(
+                    children: [
+                      Icon(Icons.upload_file, size: 20),
+                      SizedBox(width: 12),
+                      Text('Импорт из файла'),
                     ],
                   ),
                 ),
               ],
-              icon: const Icon(Icons.settings_applications),
-              tooltip: 'Режим проверки',
-            ),
-          if (!_isSelectionMode)
-            IconButton(
-              icon: const Icon(Icons.checklist),
-              onPressed: () => setState(() => _isSelectionMode = true),
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'Меню',
             ),
           if (_isSelectionMode)
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: _deleteSelected,
+              tooltip: 'Удалить выбранные',
             ),
           if (_isSelectionMode)
             IconButton(
@@ -106,6 +181,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
                 setState(() => _isSelectionMode = false);
                 ref.read(selectedProxyIdsProvider.notifier).clear();
               },
+              tooltip: 'Отмена',
             ),
         ],
       ),
@@ -421,6 +497,94 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
       await _startParallelCheck();
     } else {
       await _startSequentialCheck();
+    }
+  }
+
+  Future<void> _exportProxies() async {
+    final proxies = await ref.read(proxyListProvider.future);
+    if (proxies.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нет прокси для экспорта')),
+        );
+      }
+      return;
+    }
+    
+    final filePath = await FileImportExportService.exportProxies(proxies);
+    if (filePath != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Экспортировано в: $filePath'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Ошибка при экспорте'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _exportProxiesToJson() async {
+    final proxies = await ref.read(proxyListProvider.future);
+    if (proxies.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нет прокси для экспорта')),
+        );
+      }
+      return;
+    }
+    
+    final filePath = await FileImportExportService.exportProxiesToJson(proxies);
+    if (filePath != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Экспортировано в JSON: $filePath'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Ошибка при экспорте'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _importProxies() async {
+    final importedProxies = await FileImportExportService.importProxies();
+    
+    if (importedProxies.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Не найдено валидных прокси в файле')),
+        );
+      }
+      return;
+    }
+    
+    int added = 0;
+    for (final proxy in importedProxies) {
+      await ref.read(proxyRepositoryProvider).add(proxy);
+      added++;
+    }
+    
+    ref.invalidate(proxyListProvider);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Импортировано $added прокси'),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   }
   
