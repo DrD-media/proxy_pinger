@@ -42,49 +42,113 @@ void showProxyInfoBottomSheet({
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Заголовок
+                // Заголовок с общей кнопкой копирования
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(
-                      proxy.type == ProxyType.mtproto 
-                          ? Icons.security 
-                          : Icons.vpn_key,
-                      size: 20,
-                      color: Colors.blue,
+                    Row(
+                      children: [
+                        Icon(
+                          proxy.type == ProxyType.mtproto 
+                              ? Icons.security 
+                              : Icons.vpn_key,
+                          size: 20,
+                          color: Colors.blue,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          proxy.type == ProxyType.mtproto ? 'MTProto Proxy' : 'SOCKS5 Proxy',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      proxy.type == ProxyType.mtproto ? 'MTProto Proxy' : 'SOCKS5 Proxy',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                    // Общая кнопка копирования всех данных
+                    GestureDetector(
+                      onTap: () => _copyAllProxyData(context, proxy),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.copy_all, size: 14, color: Colors.blue.shade700),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Копировать всё',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const Divider(height: 24),
                 
-                // Сервер
-                _buildInfoRow(context, 'Сервер', proxy.server),
+                // Сервер с кнопкой копирования
+                _buildInfoRowWithCopy(
+                  context,
+                  'Сервер',
+                  proxy.server,
+                  onCopy: () => _copyToClipboard(context, proxy.server, 'Сервер скопирован'),
+                ),
                 const SizedBox(height: 8),
                 
-                // Порт
-                _buildInfoRow(context, 'Порт', proxy.port.toString()),
+                // Порт с кнопкой копирования
+                _buildInfoRowWithCopy(
+                  context,
+                  'Порт',
+                  proxy.port.toString(),
+                  onCopy: () => _copyToClipboard(context, proxy.port.toString(), 'Порт скопирован'),
+                ),
                 const SizedBox(height: 8),
                 
                 // MTProto специфичные поля
                 if (proxy is MtprotoProxy) ...[
-                  _buildInfoRow(context, 'Ключ (secret)', proxy.secret, isSecret: true),
+                  _buildInfoRowWithCopy(
+                    context,
+                    'Ключ (secret)',
+                    proxy.secret,
+                    isSecret: true,
+                    onCopy: () => _copyToClipboard(context, proxy.secret, 'Ключ скопирован'),
+                  ),
                 ],
                 
                 // SOCKS5 специфичные поля
                 if (proxy is Socks5Proxy) ...[
                   if (proxy.username != null)
-                    _buildInfoRow(context, 'Логин', proxy.username!),
+                    _buildInfoRowWithCopy(
+                      context,
+                      'Логин',
+                      proxy.username!,
+                      onCopy: () => _copyToClipboard(context, proxy.username!, 'Логин скопирован'),
+                    ),
                   if (proxy.password != null)
-                    _buildInfoRow(context, 'Пароль', proxy.password!, isSecret: true),
+                    _buildInfoRowWithCopy(
+                      context,
+                      'Пароль',
+                      proxy.password!,
+                      isSecret: true,
+                      onCopy: () => _copyToClipboard(context, proxy.password!, 'Пароль скопирован'),
+                    ),
                   if (proxy.username == null && proxy.password == null)
-                    _buildInfoRow(context, 'Авторизация', 'Отсутствует'),
+                    _buildInfoRowWithCopy(
+                      context,
+                      'Авторизация',
+                      'Отсутствует',
+                      onCopy: null,
+                    ),
                 ],
               ],
             ),
@@ -92,7 +156,7 @@ void showProxyInfoBottomSheet({
           
           const SizedBox(height: 16),
           
-          // Кнопка копирования
+          // Кнопка копирования ссылки
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
@@ -100,18 +164,12 @@ void showProxyInfoBottomSheet({
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.copy, color: Colors.blue.shade700, size: 20),
+              child: Icon(Icons.link, color: Colors.blue.shade700, size: 20),
             ),
             title: const Text('Скопировать ссылку'),
             onTap: () {
               Navigator.pop(context);
-              Clipboard.setData(ClipboardData(text: proxy.fullLink));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('📋 Ссылка скопирована в буфер обмена'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              _copyToClipboard(context, proxy.fullLink, 'Ссылка скопирована');
             },
           ),
           
@@ -139,7 +197,60 @@ void showProxyInfoBottomSheet({
   );
 }
 
-Widget _buildInfoRow(BuildContext context, String label, String value, {bool isSecret = false}) {
+/// Копирование всех данных прокси
+void _copyAllProxyData(BuildContext context, ProxyEntity proxy) {
+  String allData = '';
+  
+  allData += 'Тип: ${proxy.type == ProxyType.mtproto ? 'MTProto' : 'SOCKS5'}\n';
+  allData += 'Сервер: ${proxy.server}\n';
+  allData += 'Порт: ${proxy.port}\n';
+  
+  if (proxy is MtprotoProxy) {
+    allData += 'Ключ (secret): ${proxy.secret}\n';
+  }
+  
+  if (proxy is Socks5Proxy) {
+    if (proxy.username != null) {
+      allData += 'Логин: ${proxy.username}\n';
+    }
+    if (proxy.password != null) {
+      allData += 'Пароль: ${proxy.password}\n';
+    }
+    if (proxy.username == null && proxy.password == null) {
+      allData += 'Авторизация: Отсутствует\n';
+    }
+  }
+  
+  allData += '\nСсылка: ${proxy.fullLink}';
+  
+  Clipboard.setData(ClipboardData(text: allData));
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('📋 Все данные прокси скопированы'),
+      duration: Duration(seconds: 2),
+    ),
+  );
+}
+
+/// Копирование в буфер обмена
+void _copyToClipboard(BuildContext context, String text, String message) {
+  Clipboard.setData(ClipboardData(text: text));
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('📋 $message'),
+      duration: const Duration(seconds: 1),
+    ),
+  );
+}
+
+/// Строка с информацией и кнопкой копирования
+Widget _buildInfoRowWithCopy(
+  BuildContext context,
+  String label,
+  String value, {
+  bool isSecret = false,
+  VoidCallback? onCopy,
+}) {
   return Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -167,20 +278,17 @@ Widget _buildInfoRow(BuildContext context, String label, String value, {bool isS
           overflow: TextOverflow.ellipsis,
         ),
       ),
-      if (isSecret)
+      if (onCopy != null)
         GestureDetector(
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: value));
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('📋 Скопировано'),
-                duration: Duration(seconds: 1),
-              ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Icon(Icons.copy, size: 16, color: Colors.grey.shade500),
+          onTap: onCopy,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            margin: const EdgeInsets.only(left: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(Icons.copy, size: 14, color: Colors.grey.shade600),
           ),
         ),
     ],
