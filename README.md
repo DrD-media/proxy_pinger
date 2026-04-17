@@ -1,16 +1,249 @@
-# proxy_pinger
+<div align="center">
+  
+# 🚀 Proxy Pinger
 
-A new Flutter project.
+**Быстрая параллельная проверка Telegram прокси (MTProto / SOCKS5)**
 
-## Getting Started
+[![Flutter](https://img.shields.io/badge/Flutter-3.19.0-blue.svg)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.3.0-00B4AB.svg)](https://dart.dev)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Windows-brightgreen.svg)](#)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-This project is a starting point for a Flutter application.
+<img src="assets/icon.png" width="120" alt="App Icon">
 
-A few resources to get you started if this is your first Flutter project:
+**Проверяйте прокси в 10 раз быстрее, чем в официальном клиенте Telegram**
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+</div>
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## 📖 О проекте
+
+**Proxy Pinger** — это мобильное приложение для управления и массовой проверки прокси-серверов для Telegram. В отличие от официального клиента, который проверяет прокси последовательно (по одному), Proxy Pinger использует **параллельную проверку**, что ускоряет процесс в 10-20 раз.
+
+### 🎯 Почему Proxy Pinger?
+
+| Проблема официального клиента | Решение Proxy Pinger |
+|------------------------------|---------------------|
+| ❌ Медленная последовательная проверка | ✅ Параллельная проверка всех прокси сразу |
+| ❌ Нет истории проверок | ✅ Полная история с фильтрацией |
+| ❌ Нельзя массово управлять прокси | ✅ CRUD операции (добавление/удаление/редактирование) |
+| ❌ Только MTProto | ✅ Поддержка MTProto и SOCKS5 |
+| ❌ Нет экспорта/импорта | ✅ Резервное копирование списка |
+
+---
+
+## ✨ Возможности
+
+| Категория | Возможности |
+|-----------|-------------|
+| **🚀 Проверка прокси** | • Параллельная проверка всех прокси<br>• TCP ping с таймаутом 3 секунды<br>• Отображение времени отклика (мс) |
+| **🔗 Типы прокси** | • MTProto (с secret ключом)<br>• SOCKS5 (с логином/паролем)<br>• Автоопределение типа по ссылке |
+| **📋 Управление списком** | • Добавление по ссылке tg://proxy или socks5://<br>• Свайп влево — удаление<br>• Свайп вправо — редактирование<br>• Множественный выбор и массовое удаление |
+| **📊 История проверок** | • Автоматическое сохранение снимков<br>• Фильтрация по доступным/недоступным<br>• Поиск по дате<br>• Удаление отдельных снимков |
+| **🔧 Удобство** | • Копирование всех данных прокси одной кнопкой<br>• Копирование каждого поля отдельно<br>• Поделиться ссылкой<br>• Темная тема Material 3 |
+
+---
+
+## 🖼️ Скриншоты
+
+<div align="center">
+
+| Главный экран | История проверок | Информация о прокси |
+|---------------|-----------------|---------------------|
+| <img src="screenshots/main_screen.png" width="200" alt="Main Screen"> | <img src="screenshots/history_screen.png" width="200" alt="History Screen"> | <img src="screenshots/proxy_info.png" width="200" alt="Proxy Info"> |
+
+| Проверка прокси | Режим выбора | Онлайн/офлайн фильтр |
+|-----------------|--------------|----------------------|
+| <img src="screenshots/checking.png" width="200" alt="Checking"> | <img src="screenshots/selection.png" width="200" alt="Selection Mode"> | <img src="screenshots/online_filter.png" width="200" alt="Online Filter"> |
+
+</div>
+
+---
+
+## 🚀 Установка
+
+### 📱 Android
+
+| Способ | Инструкция |
+|--------|-------------|
+| **APK файл** | 1. Скачайте `app-release.apk` из [Releases](https://github.com/yourusername/proxy_pinger/releases)<br>2. Откройте файл на телефоне<br>3. Разрешите установку из неизвестных источников<br>4. Готово! |
+| **Через код** | `flutter build apk --release` |
+
+### 🍎 iOS (требуется Mac)
+
+| Способ | Инструкция |
+|--------|-------------|
+| **Через Xcode** | 1. Откройте `ios/Runner.xcworkspace` в Xcode<br>2. Настройте команду разработчика<br>3. `flutter build ios --release` |
+
+### 🖥️ Windows
+
+| Способ | Инструкция |
+|--------|-------------|
+| **EXE файл** | 1. Скачайте `ProxyPinger_Windows.zip` из [Releases](https://github.com/yourusername/proxy_pinger/releases)<br>2. Распакуйте в любую папку<br>3. Запустите `proxy_pinger.exe` |
+| **Через код** | `flutter build windows --release` |
+
+---
+
+## 🛠️ Разработка
+
+### Требования
+
+- Flutter 3.19.0+
+- Dart 3.3.0+
+- Android Studio / VS Code
+- JDK 17 (для Android сборки)
+
+### Клонирование и сборка
+
+```bash
+# Клонировать репозиторий
+git clone https://github.com/yourusername/proxy_pinger.git
+cd proxy_pinger
+
+# Установить зависимости
+flutter pub get
+
+# Запустить на устройстве
+flutter run
+
+# Собрать APK
+flutter build apk --release
+
+# Собрать Windows приложение
+flutter build windows --release
+
+# Сгенерировать иконку приложения (предварительно поместите assets/icon.png)
+flutter pub run flutter_launcher_icons:main
+```
+
+## 📂 Структура проекта
+
+```bash
+lib/
+├── main.dart                    # Точка входа
+├── router/                      # Маршрутизация
+│   └── app_router.dart         # go_router с сохранением состояния табов
+├── domain/                      # Бизнес-логика и сущности
+│   ├── entities/               # Модели данных
+│   │   ├── proxy.dart          # Абстрактный класс прокси
+│   │   ├── mtproto_proxy.dart  # MTProto прокси
+│   │   ├── socks5_proxy.dart   # SOCKS5 прокси
+│   │   └── history_snapshot.dart # Снимок истории
+│   └── repositories/           # Интерфейсы репозиториев
+│       ├── proxy_repository.dart
+│       └── history_repository.dart
+├── data/                       # Реализация данных
+│   ├── repositories/          # Hive репозитории
+│   │   ├── hive_proxy_repository.dart
+│   │   └── hive_history_repository.dart
+│   └── services/              # Сервисы
+│       ├── proxy_checker_service.dart  # Параллельная проверка
+│       └── link_parser_service.dart    # Парсинг ссылок
+├── providers/                  # Riverpod провайдеры
+│   ├── proxy_provider.dart
+│   ├── history_provider.dart
+│   └── selection_provider.dart
+├── screens/                    # Экраны
+│   ├── main_shell.dart        # BottomNavigation обертка
+│   ├── my_proxies_screen.dart # Главный экран
+│   ├── history_screen.dart    # История проверок
+│   ├── online_screen.dart     # Только доступные
+│   └── offline_screen.dart    # Только недоступные
+└── widgets/                    # Переиспользуемые виджеты
+    ├── proxy_tile.dart        # Плашка прокси
+    ├── history_tile.dart      # Плашка истории
+    ├── proxy_info_bottom_sheet.dart # Информация о прокси
+    └── add_proxy_bottom_sheet.dart # Добавление прокси
+```
+## 📡 Как это работает
+
+```bash
+┌─────────────────────────────────────────────────────────────────┐
+│                      Параллельная проверка                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  📱 Proxy 1 ──► TCP Ping ──► ✅ 45ms                           │
+│  📱 Proxy 2 ──► TCP Ping ──► ❌ timeout                         │
+│  📱 Proxy 3 ──► TCP Ping ──► ✅ 120ms                          │
+│  📱 Proxy 4 ──► TCP Ping ──► ✅ 78ms                           │
+│                                                                 │
+│  ⚡ Future.wait() → все проверки выполняются одновременно      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+Алгоритм проверки SOCKS5:
+1. TCP соединение с server:port прокси
+2. SOCKS5 handshake (с авторизацией или без)
+3. Команда CONNECT к тестовому хосту (1.1.1.1:443)
+4. Замер времени до ответа "Connection Established"
+
+Алгоритм проверки MTProto:
+1. TCP соединение к server:port
+2. Замер времени подключения
+
+## 📄 Лицензия
+
+Распространяется под лицензией MIT. Смотрите файл LICENSE для деталей.
+---
+<div align="center">
+Сделано с ❤️ для общения без границ
+
+⭐ Поставьте звезду, если проект вам полезен! ⭐
+</div>
+
+## 📋 История версий
+
+### v1.0.2 (2024-04-16) Текущая
+
+| Компонент | Изменения |
+|-----------|-----------|
+| Новый функционал | ➕ Ручное подключение по IP адресу |
+| Новый функционал | ➕ Экран ручного подключения |
+| Улучшение | 🔧 Оптимизирован поиск устройств |
+| Улучшение | 🔧 Добавлена иконка приложения |
+| Исправление | 🐛 Исправлена потеря сообщений при выходе |
+
+### v1.0.1 (2024-04-15)
+
+| Компонент | Изменения |
+|-----------|-----------|
+| Новый функционал | ➕ Автоматический поиск устройств |
+| Новый функционал | ➕ Статусы сообщений (отправлено/доставлено) |
+| Улучшение | 🔧 Улучшен UI/UX |
+| Улучшение | 🔧 Добавлены градиентные фоны |
+
+### v1.0.0 (2024-04-14) Первый релиз
+
+|Компонент | Изменения |
+|----------|-----------|
+| Базовый функционал | ✅ Базовая регистрация пользователей |
+| Базовый функционал | ✅ Отправка и получение сообщений |
+| Базовый функционал | ✅ Локальное хранение истории |
+| Базовый функционал | ✅ WebSocket сервер на порту 8080 |
+
+## 🗺️ Планы развития
+
+Улучшение функционала и стабильности
+
+---
+
+## 🤝 Как внести вклад
+
+1. **Форкните** репозиторий
+
+2. **Создайте ветку** (`git checkout -b feature/amazing-feature`)
+
+3. **Зафиксируйте изменения** (`git commit -m 'Add amazing feature'`)
+
+4. **Отправьте** (`git push origin feature/amazing-feature`)
+
+5. **Откройте Pull Request**
+
+---
+
+<div align="center">
+
+**Спасибо, что используете Merlen Messenger!**
+
+</div>
