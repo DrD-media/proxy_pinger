@@ -407,6 +407,7 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
     try {
       final result = await FilePicker.platform.pickFiles(
         allowMultiple: false,
+        type: FileType.custom,  // ← Добавлено: обязательно для allowedExtensions
         allowedExtensions: ['txt', 'json'],
         dialogTitle: 'Выберите файл с прокси',
         withData: true, // Важно для Android
@@ -496,29 +497,42 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
     );
   }
   
-  void _addProxyFromLink() {
+  void _addProxyFromLink() async {
     final link = _linkController.text.trim();
     if (link.isEmpty) return;
     
     try {
       final proxy = LinkParserService.fromLink(link);
-      ref.read(proxyRepositoryProvider).add(proxy);
-      ref.invalidate(proxyListProvider);
-      Navigator.pop(context);
+      final isAdded = await ref.read(proxyRepositoryProvider).addIfNotExists(proxy);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Прокси добавлен'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (isAdded && mounted) {
+        ref.invalidate(proxyListProvider);
+        _linkController.clear();
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Прокси добавлен'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Такой прокси уже существует'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Ошибка: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }
