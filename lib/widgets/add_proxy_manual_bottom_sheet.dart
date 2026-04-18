@@ -25,149 +25,110 @@ class _AddProxyManualBottomSheetState extends ConsumerState<AddProxyManualBottom
   
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,  // Увеличено с 0.7 до 0.75
-      minChildSize: 0.55,      // Увеличено с 0.5 до 0.55
-      maxChildSize: 0.92,      // Увеличено с 0.9 до 0.92
-      expand: false,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              // Индикатор свайпа
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Переключатель типа
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTypeSelector(ProxyType.mtproto, 'MTProto', Icons.security),
+                    const SizedBox(width: 8),
+                    _buildTypeSelector(ProxyType.socks5, 'SOCKS5', Icons.vpn_key),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Добавить прокси вручную',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            
+            // Поле Сервер
+            TextFormField(
+              controller: _serverController,
+              decoration: const InputDecoration(
+                labelText: 'Сервер (IP или домен)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.dns),
               ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),  // top: 16 → 8
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Переключатель типа
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildTypeSelector(ProxyType.mtproto, 'MTProto', Icons.security),
-                                const SizedBox(width: 8),
-                                _buildTypeSelector(ProxyType.socks5, 'SOCKS5', Icons.vpn_key),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),  // 24 → 16
-                        
-                        // Поле Сервер
-                        TextFormField(
-                          controller: _serverController,
-                          decoration: const InputDecoration(
-                            labelText: 'Сервер (IP или домен)',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.dns),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Введите сервер';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Поле Порт
-                        TextFormField(
-                          controller: _portController,
-                          decoration: const InputDecoration(
-                            labelText: 'Порт',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.settings_ethernet),
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Введите порт';
-                            }
-                            final port = int.tryParse(value);
-                            if (port == null || port < 1 || port > 65535) {
-                              return 'Введите корректный порт (1-65535)';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Динамические поля
-                        if (_selectedType == ProxyType.mtproto) ...[
-                          _buildSecretField(),
-                        ] else ...[
-                          _buildSocks5Fields(),
-                        ],
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Кнопки
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                ),
-                                child: const Text('Отмена'),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _addProxy,
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  backgroundColor: Colors.blue,
-                                ),
-                                child: const Text('Добавить'),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
-                ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Введите сервер';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // Поле Порт
+            TextFormField(
+              controller: _portController,
+              decoration: const InputDecoration(
+                labelText: 'Порт',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.settings_ethernet),
               ),
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Введите порт';
+                }
+                final port = int.tryParse(value);
+                if (port == null || port < 1 || port > 65535) {
+                  return 'Введите корректный порт (1-65535)';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // Динамические поля
+            if (_selectedType == ProxyType.mtproto) ...[
+              _buildSecretField(),
+            ] else ...[
+              _buildSocks5Fields(),
             ],
-          ),
-        );
-      },
+            
+            const SizedBox(height: 32),
+            
+            // Кнопки
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Отмена'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _addProxy,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.blue,
+                    ),
+                    child: const Text('Добавить'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
   
