@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/services/link_parser_service.dart';
 import '../providers/proxy_provider.dart';
 import 'add_proxy_manual_bottom_sheet.dart';
+import '../services/file_import_export_service.dart';
 
 class AddProxyBottomSheet extends ConsumerStatefulWidget {
   const AddProxyBottomSheet({super.key});
@@ -59,7 +60,7 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
                         labelColor: Colors.blue,
                         unselectedLabelColor: Colors.grey,
                         tabs: [
-                          Tab(icon: Icon(Icons.bar_chart), text: 'Стат'),
+                          Tab(icon: Icon(Icons.folder), text: 'Файлом'),
                           Tab(icon: Icon(Icons.link), text: 'По ссылке'),
                           Tab(icon: Icon(Icons.edit_note), text: 'Вручную'),
                         ],
@@ -68,8 +69,8 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
                       Expanded(
                         child: TabBarView(
                           children: [
-                            // Вкладка: Стат (заглушка)
-                            _buildStatsTab(),
+                            // Вкладка: Файлом (экспорт/импорт)
+                            _buildFileTab(),
                             // Вкладка: По ссылке
                             _buildLinkTab(scrollController),
                             // Вкладка: Вручную
@@ -88,24 +89,176 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
     );
   }
   
-  Widget _buildStatsTab() {
-    return const Center(
+  Widget _buildFileTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.show_chart, size: 48, color: Colors.grey),
-          SizedBox(height: 12),
-          Text(
-            'Статистика будет здесь',
-            style: TextStyle(color: Colors.grey),
+          const SizedBox(height: 16),
+          
+          // Экспорт в TXT
+          _buildFileButton(
+            icon: Icons.save_alt,
+            color: Colors.green,
+            title: 'Экспорт в TXT',
+            subtitle: 'Сохранить список прокси в текстовый файл',
+            onTap: () => _exportToTxt(),
           ),
-          Text(
-            'в следующей версии',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+          
+          const SizedBox(height: 16),
+          
+          // Экспорт в JSON
+          _buildFileButton(
+            icon: Icons.save_alt,
+            color: Colors.blue,
+            title: 'Экспорт в JSON',
+            subtitle: 'Сохранить список прокси в JSON формате',
+            onTap: () => _exportToJson(),
           ),
+          
+          const SizedBox(height: 16),
+          
+          // Импорт из файла
+          _buildFileButton(
+            icon: Icons.upload_file,
+            color: Colors.orange,
+            title: 'Импорт из файла',
+            subtitle: 'Загрузить прокси из TXT или JSON файла',
+            onTap: () => _importFromFile(),
+          ),
+          
+          const SizedBox(height: 32),
         ],
       ),
     );
+  }
+  
+  Widget _buildFileButton({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Future<void> _exportToTxt() async {
+    final proxies = await ref.read(proxyListProvider.future);
+    if (proxies.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Нет прокси для экспорта')),
+      );
+      return;
+    }
+    
+    final filePath = await FileImportExportService.exportProxies(proxies);
+    if (filePath != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Экспортировано в TXT: $filePath'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+  
+  Future<void> _exportToJson() async {
+    final proxies = await ref.read(proxyListProvider.future);
+    if (proxies.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Нет прокси для экспорта')),
+      );
+      return;
+    }
+    
+    final filePath = await FileImportExportService.exportProxiesToJson(proxies);
+    if (filePath != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Экспортировано в JSON: $filePath'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+  
+  Future<void> _importFromFile() async {
+    final importedProxies = await FileImportExportService.importProxies();
+    
+    if (importedProxies.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Не найдено валидных прокси в файле')),
+        );
+      }
+      return;
+    }
+    
+    int added = 0;
+    for (final proxy in importedProxies) {
+      await ref.read(proxyRepositoryProvider).add(proxy);
+      added++;
+    }
+    
+    ref.invalidate(proxyListProvider);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Импортировано $added прокси'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
   
   Widget _buildLinkTab(ScrollController scrollController) {
