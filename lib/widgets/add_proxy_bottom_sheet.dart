@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import '../data/services/link_parser_service.dart';
+import '../services/file_import_export_service.dart';
 import '../providers/proxy_provider.dart';
 import 'add_proxy_manual_bottom_sheet.dart';
-import '../services/file_import_export_service.dart';
 
 class AddProxyBottomSheet extends ConsumerStatefulWidget {
   const AddProxyBottomSheet({super.key});
@@ -15,11 +16,32 @@ class AddProxyBottomSheet extends ConsumerStatefulWidget {
 class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
   final _linkController = TextEditingController();
   
+  // Контроллеры для экспорта
+  final _fileNameController = TextEditingController();
+  final _filePathController = TextEditingController();
+  String _selectedPlatform = 'android'; // 'android' или 'windows'
+  
+  @override
+  void initState() {
+    super.initState();
+    // Устанавливаем дефолтное название
+    _fileNameController.text = 'proxy_backup';
+    // Устанавливаем дефолтный путь (пусть будет пустым - будем использовать Downloads)
+    _filePathController.text = '';
+  }
+  
+  @override
+  void dispose() {
+    _fileNameController.dispose();
+    _filePathController.dispose();
+    super.dispose();
+  }
+  
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.65,
-      minChildSize: 0.5,
+      initialChildSize: 0.75,
+      minChildSize: 0.55,
       maxChildSize: 0.92,
       expand: false,
       builder: (context, scrollController) {
@@ -69,8 +91,12 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
                       Expanded(
                         child: TabBarView(
                           children: [
-                            // Вкладка: Файлом (экспорт/импорт)
-                            _buildFileTab(),
+                            // Вкладка: Файлом
+                            SingleChildScrollView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(16),
+                              child: _buildFileTab(),
+                            ),
                             // Вкладка: По ссылке
                             _buildLinkTab(scrollController),
                             // Вкладка: Вручную
@@ -90,105 +116,233 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
   }
   
   Widget _buildFileTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Поле "Название файла"
+        TextField(
+          controller: _fileNameController,
+          decoration: const InputDecoration(
+            labelText: 'Название файла',
+            hintText: 'proxy_backup',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.description),
+            helperText: 'Без расширения (добавится автоматически)',
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Переключатель платформы (Android / Windows)
+        Row(
+          children: [
+            const Text(
+              'Платформа:',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(width: 16),
+            _buildPlatformSelector(
+              value: 'android',
+              label: 'Android',
+              icon: Icons.android,
+              defaultPath: '/storage/emulated/0/Download',
+            ),
+            const SizedBox(width: 12),
+            _buildPlatformSelector(
+              value: 'windows',
+              label: 'Windows',
+              icon: Icons.computer,  // Исправлено: Icons.windows не существует, используем Icons.computer
+              defaultPath: r'C:\Users\Ефим\Downloads',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        // Поле "Путь для сохранения" с кнопкой выбора
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _filePathController,
+                decoration: const InputDecoration(
+                  labelText: 'Путь для сохранения',
+                  hintText: 'Не указан (будет использована папка Downloads)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.folder),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.folder_open),
+              onPressed: _selectDirectory,
+              tooltip: 'Выбрать папку',
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        
+        // Кнопки экспорта/импорта
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.save_alt,
+                label: 'TXT',
+                color: Colors.green,
+                onTap: () => _exportToTxt(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.save_alt,
+                label: 'JSON',
+                color: Colors.blue,
+                onTap: () => _exportToJson(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.upload_file,
+                label: 'Импорт',
+                color: Colors.orange,
+                onTap: _importFromFile,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        // Информационная строка
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, size: 16, color: Colors.grey.shade600),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Импорт поддерживает TXT и JSON форматы',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+  
+  Widget _buildPlatformSelector({
+    required String value,
+    required String label,
+    required IconData icon,
+    required String defaultPath,
+  }) {
+    final isSelected = _selectedPlatform == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedPlatform = value;
+          _setDefaultPath(value, defaultPath);
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey.shade700),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade700,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _setDefaultPath(String platform, String defaultPath) {
+    // Если пользователь уже ввел свой путь, не перезаписываем
+    if (_filePathController.text.trim().isNotEmpty) {
+      // Спрашиваем, хочет ли он заменить путь
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Заменить путь?'),
+          content: Text('Вы уже указали путь: ${_filePathController.text}\n\nЗаменить на стандартный путь для $platform?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Нет'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _filePathController.text = defaultPath;
+                });
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Да'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      setState(() {
+        _filePathController.text = defaultPath;
+      });
+    }
+  }
+  
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 16),
-          
-          // Экспорт в TXT
-          _buildFileButton(
-            icon: Icons.save_alt,
-            color: Colors.green,
-            title: 'Экспорт в TXT',
-            subtitle: 'Сохранить список прокси в текстовый файл',
-            onTap: () => _exportToTxt(),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Экспорт в JSON
-          _buildFileButton(
-            icon: Icons.save_alt,
-            color: Colors.blue,
-            title: 'Экспорт в JSON',
-            subtitle: 'Сохранить список прокси в JSON формате',
-            onTap: () => _exportToJson(),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Импорт из файла
-          _buildFileButton(
-            icon: Icons.upload_file,
-            color: Colors.orange,
-            title: 'Импорт из файла',
-            subtitle: 'Загрузить прокси из TXT или JSON файла',
-            onTap: () => _importFromFile(),
-          ),
-          
-          const SizedBox(height: 32),
+          Icon(icon, size: 18, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white)),
         ],
       ),
     );
   }
   
-  Widget _buildFileButton({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _selectDirectory() async {
+    String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+    if (selectedDirectory != null) {
+      setState(() {
+        _filePathController.text = selectedDirectory;
+      });
+    }
   }
   
   Future<void> _exportToTxt() async {
@@ -200,12 +354,21 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
       return;
     }
     
-    final filePath = await FileImportExportService.exportProxies(proxies);
+    final fileName = _fileNameController.text.trim();
+    final customPath = _filePathController.text.trim().isEmpty ? null : _filePathController.text.trim();
+    
+    final filePath = await FileImportExportService.exportProxies(
+      proxies,
+      fileName: fileName.isEmpty ? null : fileName,
+      customPath: customPath,
+    );
+    
     if (filePath != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('✅ Экспортировано в TXT: $filePath'),
           backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -220,19 +383,37 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
       return;
     }
     
-    final filePath = await FileImportExportService.exportProxiesToJson(proxies);
+    final fileName = _fileNameController.text.trim();
+    final customPath = _filePathController.text.trim().isEmpty ? null : _filePathController.text.trim();
+    
+    final filePath = await FileImportExportService.exportProxiesToJson(
+      proxies,
+      fileName: fileName.isEmpty ? null : fileName,
+      customPath: customPath,
+    );
+    
     if (filePath != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('✅ Экспортировано в JSON: $filePath'),
           backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
         ),
       );
     }
   }
   
   Future<void> _importFromFile() async {
-    final importedProxies = await FileImportExportService.importProxies();
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      allowedExtensions: ['txt', 'json'],
+      dialogTitle: 'Выберите файл с прокси',
+    );
+    
+    if (result == null) return;
+    
+    final filePath = result.files.single.path!;
+    final importedProxies = await FileImportExportService.importProxiesFromPath(filePath);
     
     if (importedProxies.isEmpty) {
       if (mounted) {

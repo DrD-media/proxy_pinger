@@ -1,79 +1,58 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';  // Добавлено для debugPrint
 import 'package:path_provider/path_provider.dart';
 import '../domain/entities/proxy.dart';
 import '../domain/entities/mtproto_proxy.dart';
 import '../domain/entities/socks5_proxy.dart';
-import '../data/services/link_parser_service.dart'; // Исправлен путь
-import 'package:flutter/foundation.dart';
+import '../data/services/link_parser_service.dart';
 
 class FileImportExportService {
   
-  /// Экспорт прокси в файл (TXT)
-  static Future<String?> exportProxies(List<ProxyEntity> proxies) async {
+  /// Экспорт прокси в TXT файл
+  static Future<String?> exportProxies(
+    List<ProxyEntity> proxies, {
+    String? fileName,
+    String? customPath,
+  }) async {
     try {
       final content = proxies.map((p) => p.fullLink).join('\n');
       
-      final directory = await getDownloadsDirectory();
-      if (directory == null) throw Exception('Не удалось найти папку Downloads');
+      String finalFileName = fileName ?? 'proxy_backup';
+      if (!finalFileName.endsWith('.txt')) {
+        finalFileName = '$finalFileName.txt';
+      }
       
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final filePath = '${directory.path}/proxy_backup_$timestamp.txt';
+      String directoryPath;
+      if (customPath != null && customPath.isNotEmpty) {
+        directoryPath = customPath;
+        final dir = Directory(directoryPath);
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+      } else {
+        final directory = await getDownloadsDirectory();
+        if (directory == null) throw Exception('Не удалось найти папку Downloads');
+        directoryPath = directory.path;
+      }
+      
+      final filePath = '$directoryPath/$finalFileName';
       final file = File(filePath);
       
       await file.writeAsString(content);
       return filePath;
     } catch (e) {
-      debugPrint('Export error: $e');
+      debugPrint('Export TXT error: $e');
       return null;
     }
   }
   
-  /// Импорт прокси из файла
-  static Future<List<ProxyEntity>> importProxies() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: false,
-        allowedExtensions: ['txt', 'json'],
-        dialogTitle: 'Выберите файл с прокси',
-      );
-      
-      if (result == null) return [];
-      
-      final file = File(result.files.single.path!);
-      final content = await file.readAsString();
-      final lines = content.split('\n');
-      
-      final List<ProxyEntity> proxies = [];
-      final Set<String> uniqueKeys = {};
-      
-      for (var line in lines) {
-        line = line.trim();
-        if (line.isEmpty) continue;
-        
-        try {
-          final proxy = LinkParserService.fromLink(line);
-          final key = '${proxy.server}:${proxy.port}';
-          
-          if (!uniqueKeys.contains(key)) {
-            uniqueKeys.add(key);
-            proxies.add(proxy);
-          }
-        } catch (e) {
-          // Пропускаем невалидные строки
-        }
-      }
-      
-      return proxies;
-    } catch (e) {
-      debugPrint('Import error: $e');
-      return [];
-    }
-  }
-  
-  /// Экспорт в JSON формате
-  static Future<String?> exportProxiesToJson(List<ProxyEntity> proxies) async {
+  /// Экспорт прокси в JSON файл
+  static Future<String?> exportProxiesToJson(
+    List<ProxyEntity> proxies, {
+    String? fileName,
+    String? customPath,
+  }) async {
     try {
       final List<Map<String, dynamic>> jsonList = [];
       
@@ -97,11 +76,26 @@ class FileImportExportService {
       }
       
       final jsonString = jsonEncode(jsonList);
-      final directory = await getDownloadsDirectory();
-      if (directory == null) throw Exception('Не удалось найти папку Downloads');
       
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final filePath = '${directory.path}/proxy_backup_$timestamp.json';
+      String finalFileName = fileName ?? 'proxy_backup';
+      if (!finalFileName.endsWith('.json')) {
+        finalFileName = '$finalFileName.json';
+      }
+      
+      String directoryPath;
+      if (customPath != null && customPath.isNotEmpty) {
+        directoryPath = customPath;
+        final dir = Directory(directoryPath);
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+      } else {
+        final directory = await getDownloadsDirectory();
+        if (directory == null) throw Exception('Не удалось найти папку Downloads');
+        directoryPath = directory.path;
+      }
+      
+      final filePath = '$directoryPath/$finalFileName';
       final file = File(filePath);
       
       await file.writeAsString(jsonString);
@@ -110,5 +104,79 @@ class FileImportExportService {
       debugPrint('Export JSON error: $e');
       return null;
     }
+  }
+  
+  /// Импорт прокси из файла по пути
+  static Future<List<ProxyEntity>> importProxiesFromPath(String filePath) async {
+    try {
+      final file = File(filePath);
+      final content = await file.readAsString();
+      
+      if (filePath.endsWith('.json')) {
+        return _importFromJson(content);
+      } else {
+        return _importFromTxt(content);
+      }
+    } catch (e) {
+      debugPrint('Import error: $e');
+      return [];
+    }
+  }
+  
+  /// Импорт из JSON строки
+  static Future<List<ProxyEntity>> _importFromJson(String content) async {
+    try {
+      final List<dynamic> jsonList = jsonDecode(content);
+      final List<ProxyEntity> proxies = [];
+      final Set<String> uniqueKeys = {};
+      
+      for (var item in jsonList) {
+        try {
+          final fullLink = item['fullLink'];
+          if (fullLink == null) continue;
+          
+          final proxy = LinkParserService.fromLink(fullLink);
+          final key = '${proxy.server}:${proxy.port}';
+          
+          if (!uniqueKeys.contains(key)) {
+            uniqueKeys.add(key);
+            proxies.add(proxy);
+          }
+        } catch (e) {
+          // Пропускаем невалидные записи
+        }
+      }
+      
+      return proxies;
+    } catch (e) {
+      debugPrint('JSON parse error: $e');
+      return [];
+    }
+  }
+  
+  /// Импорт из TXT строки
+  static Future<List<ProxyEntity>> _importFromTxt(String content) async {
+    final lines = content.split('\n');
+    final List<ProxyEntity> proxies = [];
+    final Set<String> uniqueKeys = {};
+    
+    for (var line in lines) {
+      line = line.trim();
+      if (line.isEmpty) continue;
+      
+      try {
+        final proxy = LinkParserService.fromLink(line);
+        final key = '${proxy.server}:${proxy.port}';
+        
+        if (!uniqueKeys.contains(key)) {
+          uniqueKeys.add(key);
+          proxies.add(proxy);
+        }
+      } catch (e) {
+        // Пропускаем невалидные строки
+      }
+    }
+    
+    return proxies;
   }
 }

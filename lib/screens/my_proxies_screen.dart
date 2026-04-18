@@ -11,6 +11,7 @@ import '../widgets/add_proxy_bottom_sheet.dart';
 import '../domain/entities/proxy.dart';
 import '../widgets/proxy_info_bottom_sheet.dart';
 import '../services/file_import_export_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 class MyProxiesScreen extends ConsumerStatefulWidget {
   const MyProxiesScreen({super.key});
@@ -559,7 +560,17 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
   }
 
   Future<void> _importProxies() async {
-    final importedProxies = await FileImportExportService.importProxies();
+    // Используем новый метод с выбором файла
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      allowedExtensions: ['txt', 'json'],
+      dialogTitle: 'Выберите файл с прокси',
+    );
+    
+    if (result == null) return;
+    
+    final filePath = result.files.single.path!;
+    final importedProxies = await FileImportExportService.importProxiesFromPath(filePath);
     
     if (importedProxies.isEmpty) {
       if (mounted) {
