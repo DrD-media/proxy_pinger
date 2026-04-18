@@ -65,14 +65,14 @@
 
 | Способ | Инструкция |
 |--------|-------------|
-| **APK файл** | 1. Скачайте `app-release.apk` из [Releases](https://github.com/yourusername/proxy_pinger/releases)<br>2. Откройте файл на телефоне<br>3. Разрешите установку из неизвестных источников<br>4. Готово! |
+| **APK файл** | 1. Скачайте `app-release.apk` из [Releases](https://github.com/DrD-media/proxy_pinger/releases/tag/proxy_pinger-V1.0.3)<br>2. Откройте файл на телефоне<br>3. Разрешите установку из неизвестных источников<br>4. Готово! |
 | **Через код** | `flutter build apk --release` |
 
 ### 🖥️ Windows
 
 | Способ | Инструкция |
 |--------|-------------|
-| **EXE файл** | 1. Скачайте `ProxyPinger_Windows.zip` из [Releases](https://github.com/yourusername/proxy_pinger/releases)<br>2. Распакуйте в любую папку<br>3. Запустите `proxy_pinger.exe` |
+| **EXE файл** | 1. Скачайте `ProxyPinger_Windows.zip` из [Releases](https://github.com/DrD-media/proxy_pinger/releases/tag/proxy_pinger-V1.0.3)<br>2. Распакуйте в любую папку<br>3. Запустите `proxy_pinger.exe` |
 | **Через код** | `flutter build windows --release` |
 
 ---
