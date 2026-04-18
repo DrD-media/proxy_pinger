@@ -404,41 +404,62 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
   }
   
   Future<void> _importFromFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      allowedExtensions: ['txt', 'json'],
-      dialogTitle: 'Выберите файл с прокси',
-    );
-    
-    if (result == null) return;
-    
-    final filePath = result.files.single.path!;
-    final importedProxies = await FileImportExportService.importProxiesFromPath(filePath);
-    
-    if (importedProxies.isEmpty) {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        allowedExtensions: ['txt', 'json'],
+        dialogTitle: 'Выберите файл с прокси',
+        withData: true, // Важно для Android
+      );
+      
+      if (result == null) return;
+      
+      final filePath = result.files.single.path;
+      if (filePath == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ Не удалось получить путь к файлу')),
+          );
+        }
+        return;
+      }
+      
+      final importedProxies = await FileImportExportService.importProxiesFromPath(filePath);
+      
+      if (importedProxies.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ Не найдено валидных прокси в файле')),
+          );
+        }
+        return;
+      }
+      
+      int added = 0;
+      for (final proxy in importedProxies) {
+        final isAdded = await ref.read(proxyRepositoryProvider).addIfNotExists(proxy);
+        if (isAdded) added++;
+      }
+      
+      ref.invalidate(proxyListProvider);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Не найдено валидных прокси в файле')),
+          SnackBar(
+            content: Text('✅ Импортировано $added новых прокси (пропущено ${importedProxies.length - added} дубликатов)'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
-      return;
-    }
-    
-    int added = 0;
-    for (final proxy in importedProxies) {
-      await ref.read(proxyRepositoryProvider).add(proxy);
-      added++;
-    }
-    
-    ref.invalidate(proxyListProvider);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Импортировано $added прокси'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Ошибка при импорте: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   

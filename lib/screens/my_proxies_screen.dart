@@ -599,22 +599,32 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     }
   }
   
-  void _addProxyFromLink() {
+  void _addProxyFromLink() async {
     final link = _linkController.text.trim();
     if (link.isEmpty) return;
     
     try {
       final proxy = LinkParserService.fromLink(link);
-      ref.read(proxyRepositoryProvider).add(proxy);
-      ref.invalidate(proxyListProvider);
-      _linkController.clear();
+      final isAdded = await ref.read(proxyRepositoryProvider).addIfNotExists(proxy);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Прокси добавлен'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (isAdded) {
+        ref.invalidate(proxyListProvider);
+        _linkController.clear();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Прокси добавлен'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Такой прокси уже существует'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

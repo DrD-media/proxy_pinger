@@ -206,7 +206,7 @@ class _AddProxyManualBottomSheetState extends ConsumerState<AddProxyManualBottom
     );
   }
   
-  void _addProxy() {
+  void _addProxy() async {
     if (!_formKey.currentState!.validate()) return;
     
     try {
@@ -248,16 +248,27 @@ class _AddProxyManualBottomSheetState extends ConsumerState<AddProxyManualBottom
         );
       }
       
-      ref.read(proxyRepositoryProvider).add(proxy);
-      ref.invalidate(proxyListProvider);
-      Navigator.pop(context);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Прокси добавлен'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      final isAdded = await ref.read(proxyRepositoryProvider).addIfNotExists(proxy);
+    
+      if (isAdded) {
+        ref.invalidate(proxyListProvider);
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Прокси добавлен'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Такой прокси уже существует'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

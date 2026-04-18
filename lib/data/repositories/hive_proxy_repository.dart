@@ -67,8 +67,8 @@ class HiveProxyRepository implements ProxyRepository {
     if (proxy is MtprotoProxy) {
       data['secret'] = proxy.secret;
     } else if (proxy is Socks5Proxy) {
-      data['username'] = proxy.username;
-      data['password'] = proxy.password;
+      if (proxy.username != null) data['username'] = proxy.username;
+      if (proxy.password != null) data['password'] = proxy.password;
     }
     
     await box.put(proxy.id, data);
@@ -104,5 +104,45 @@ class HiveProxyRepository implements ProxyRepository {
       case 'offline': return ProxyStatus.offline;
       default: return ProxyStatus.unknown;
     }
+  }
+
+  /// Добавляет прокси только если его нет в базе
+  @override
+  Future<bool> addIfNotExists(ProxyEntity proxy) async {
+    final allProxies = await getAll();
+    
+    // Проверка на дубликат
+    bool exists = false;
+    
+    for (final existing in allProxies) {
+      if (proxy is MtprotoProxy && existing is MtprotoProxy) {
+        // MTProto: сравниваем сервер, порт и secret
+        if (existing.server == proxy.server &&
+            existing.port == proxy.port &&
+            existing.secret == proxy.secret) {
+          exists = true;
+          break;
+        }
+      } else if (proxy is Socks5Proxy && existing is Socks5Proxy) {
+        // SOCKS5: сравниваем сервер, порт, логин и пароль
+        final sameServer = existing.server == proxy.server;
+        final samePort = existing.port == proxy.port;
+        final sameUsername = existing.username == proxy.username;
+        final samePassword = existing.password == proxy.password;
+        
+        if (sameServer && samePort && sameUsername && samePassword) {
+          exists = true;
+          break;
+        }
+      }
+    }
+    
+    if (exists) {
+      return false; // Дубликат, не добавляем
+    }
+    
+    // Нет дубликата - добавляем
+    await add(proxy);
+    return true;
   }
 }
