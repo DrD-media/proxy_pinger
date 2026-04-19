@@ -4,14 +4,14 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../providers/proxy_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/selection_provider.dart';
+import '../providers/sort_provider.dart';
 import '../data/services/proxy_checker_service.dart';
 import '../data/services/link_parser_service.dart';
 import '../widgets/proxy_tile.dart';
 import '../widgets/add_proxy_bottom_sheet.dart';
+import '../widgets/sort_dialog.dart';
 import '../domain/entities/proxy.dart';
 import '../widgets/proxy_info_bottom_sheet.dart';
-import '../services/file_import_export_service.dart';
-import 'package:file_picker/file_picker.dart';
 
 class MyProxiesScreen extends ConsumerStatefulWidget {
   const MyProxiesScreen({super.key});
@@ -29,6 +29,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
   Widget build(BuildContext context) {
     final proxiesAsync = ref.watch(proxyListProvider);
     final selectedIds = ref.watch(selectedProxyIdsProvider);
+    final sortState = ref.watch(sortProvider);
     
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -123,51 +124,11 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
               tooltip: 'Выбрать несколько',
             ),
           if (!_isSelectionMode)
-            // 4. Кнопка меню (экспорт/импорт)
-            PopupMenuButton<String>(
-              onSelected: (value) async {
-                if (value == 'export') {
-                  await _exportProxies();
-                } else if (value == 'export_json') {
-                  await _exportProxiesToJson();
-                } else if (value == 'import') {
-                  await _importProxies();
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'export',
-                  child: Row(
-                    children: [
-                      Icon(Icons.save_alt, size: 20),
-                      SizedBox(width: 12),
-                      Text('Экспорт в TXT'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'export_json',
-                  child: Row(
-                    children: [
-                      Icon(Icons.save_alt, size: 20),
-                      SizedBox(width: 12),
-                      Text('Экспорт в JSON'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'import',
-                  child: Row(
-                    children: [
-                      Icon(Icons.upload_file, size: 20),
-                      SizedBox(width: 12),
-                      Text('Импорт из файла'),
-                    ],
-                  ),
-                ),
-              ],
-              icon: const Icon(Icons.more_vert),
-              tooltip: 'Меню',
+            // 4. Кнопка сортировки
+            IconButton(
+              icon: const Icon(Icons.filter_list),
+              onPressed: () => showSortDialog(context, ref),
+              tooltip: 'Сортировка',
             ),
           if (_isSelectionMode)
             IconButton(
@@ -243,7 +204,10 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
           Expanded(
             child: proxiesAsync.when(
               data: (proxies) {
-                if (proxies.isEmpty) {
+                // Применяем сортировку
+                final sortedProxies = _sortProxies(proxies, sortState);
+                
+                if (sortedProxies.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -276,9 +240,9 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
                 
                 return ListView.builder(
                   padding: const EdgeInsets.only(bottom: 16),
-                  itemCount: proxies.length,
+                  itemCount: sortedProxies.length,
                   itemBuilder: (context, index) {
-                    final proxy = proxies[index];
+                    final proxy = sortedProxies[index];
                     final isSelected = selectedIds.contains(proxy.id);
                     
                     if (_isSelectionMode) {
@@ -501,104 +465,6 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     }
   }
 
-  Future<void> _exportProxies() async {
-    final proxies = await ref.read(proxyListProvider.future);
-    if (proxies.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Нет прокси для экспорта')),
-        );
-      }
-      return;
-    }
-    
-    final filePath = await FileImportExportService.exportProxies(proxies);
-    if (filePath != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Экспортировано в: $filePath'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Ошибка при экспорте'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _exportProxiesToJson() async {
-    final proxies = await ref.read(proxyListProvider.future);
-    if (proxies.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Нет прокси для экспорта')),
-        );
-      }
-      return;
-    }
-    
-    final filePath = await FileImportExportService.exportProxiesToJson(proxies);
-    if (filePath != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Экспортировано в JSON: $filePath'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Ошибка при экспорте'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _importProxies() async {
-    // Используем новый метод с выбором файла
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      allowedExtensions: ['txt', 'json'],
-      dialogTitle: 'Выберите файл с прокси',
-    );
-    
-    if (result == null) return;
-    
-    final filePath = result.files.single.path!;
-    final importedProxies = await FileImportExportService.importProxiesFromPath(filePath);
-    
-    if (importedProxies.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Не найдено валидных прокси в файле')),
-        );
-      }
-      return;
-    }
-    
-    int added = 0;
-    for (final proxy in importedProxies) {
-      await ref.read(proxyRepositoryProvider).add(proxy);
-      added++;
-    }
-    
-    ref.invalidate(proxyListProvider);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Импортировано $added прокси'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-  
   void _addProxyFromLink() async {
     final link = _linkController.text.trim();
     if (link.isEmpty) return;
@@ -607,7 +473,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
       final proxy = LinkParserService.fromLink(link);
       final isAdded = await ref.read(proxyRepositoryProvider).addIfNotExists(proxy);
       
-      if (isAdded) {
+      if (isAdded && mounted) {
         ref.invalidate(proxyListProvider);
         _linkController.clear();
         
@@ -617,7 +483,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
             backgroundColor: Colors.green,
           ),
         );
-      } else {
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('⚠️ Такой прокси уже существует'),
@@ -626,12 +492,14 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Ошибка: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   
@@ -687,7 +555,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
               try {
                 final newProxy = LinkParserService.fromLink(controller.text);
                 await ref.read(proxyRepositoryProvider).delete(proxy.id);
-                await ref.read(proxyRepositoryProvider).add(newProxy);
+                await ref.read(proxyRepositoryProvider).addIfNotExists(newProxy);
                 ref.invalidate(proxyListProvider);
                 if (mounted) {
                   Navigator.pop(dialogContext);
@@ -708,5 +576,39 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
         ],
       ),
     );
+  }
+
+  List<ProxyEntity> _sortProxies(List<ProxyEntity> proxies, SortState sortState) {
+  var result = List<ProxyEntity>.from(proxies);
+    
+    if (sortState.sortMode == SortMode.smart) {
+      // Умная сортировка: группировка по статусу + пинг по возрастанию внутри online
+      result.sort((a, b) {
+        // 1. Сначала группируем по статусу (unknown → online → offline)
+        final statusOrder = {
+          ProxyStatus.unknown: 0,
+          ProxyStatus.online: 1,
+          ProxyStatus.offline: 2,
+        };
+        final orderA = statusOrder[a.lastStatus] ?? 0;
+        final orderB = statusOrder[b.lastStatus] ?? 0;
+        
+        if (orderA != orderB) {
+          return orderA.compareTo(orderB);
+        }
+        
+        // 2. Внутри статуса online сортируем по пингу (по возрастанию)
+        if (a.lastStatus == ProxyStatus.online && b.lastStatus == ProxyStatus.online) {
+          final pingA = a.lastPing ?? 999999;
+          final pingB = b.lastPing ?? 999999;
+          return pingA.compareTo(pingB);
+        }
+        
+        return 0;
+      });
+    }
+    // sortMode.none - ничего не делаем, оставляем порядок добавления
+    
+    return result;
   }
 }
