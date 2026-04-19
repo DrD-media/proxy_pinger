@@ -515,7 +515,12 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
   }
   
   void _showShareOptions(ProxyEntity proxy) {
-    showProxyInfoBottomSheet(context: context, proxy: proxy);
+    showProxyInfoBottomSheet(context: context, proxy: proxy,
+    onUpdate: (updatedProxy) async {
+      await ref.read(proxyRepositoryProvider).update(updatedProxy);
+      ref.invalidate(proxyListProvider);
+    },
+  );
   }
   
   Future<void> _deleteProxy(String id) async {

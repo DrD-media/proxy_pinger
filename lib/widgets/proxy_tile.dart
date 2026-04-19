@@ -11,6 +11,8 @@ class ProxyTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final markers = proxy.markers;
+    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       elevation: 2,
@@ -40,13 +42,21 @@ class ProxyTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Сервер
-                    Text(
-                      proxy.server,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    // Сервер + иконка избранного
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            proxy.server,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (markers.favorite)
+                          const Icon(Icons.star, color: Colors.amber, size: 18),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     
@@ -101,7 +111,7 @@ class ProxyTile extends StatelessWidget {
                     
                     const SizedBox(height: 6),
                     
-                    // Статус и тип прокси в одной строке
+                    // Статус, тип прокси и маркеры в одной строке
                     Row(
                       children: [
                         Container(
@@ -119,7 +129,7 @@ class ProxyTile extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),   // уменьшено с 8
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
@@ -129,10 +139,23 @@ class ProxyTile extends StatelessWidget {
                           child: Text(
                             proxy.type.name.toUpperCase(),
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9.75,
                               fontWeight: FontWeight.w500,
                               color: Colors.grey.shade700,
                             ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),  // добавлено вместо Spacer
+                        // Маркеры (только если выбран не серый)
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (markers.wifi > 0 && markers.wifi != 4)
+                                _buildMarkerIcon(Icons.wifi, _getMarkerColor(markers.wifi)),
+                              if (markers.mobile > 0 && markers.mobile != 4)
+                                _buildMarkerIcon(Icons.import_export, _getMarkerColor(markers.mobile)),
+                            ],
                           ),
                         ),
                       ],
@@ -140,7 +163,7 @@ class ProxyTile extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Кнопка меню (три точки)
               IconButton(
                 icon: const Icon(Icons.more_vert, size: 20),
@@ -152,6 +175,22 @@ class ProxyTile extends StatelessWidget {
         ),
       ),
     );
+  }
+  
+  Widget _buildMarkerIcon(IconData icon, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: Icon(icon, size: 14, color: color),
+    );
+  }
+  
+  Color _getMarkerColor(int value) {
+    switch (value) {
+      case 1: return Colors.red;
+      case 2: return Colors.orange;
+      case 3: return Colors.green;
+      default: return Colors.grey;
+    }
   }
   
   Color _getStatusColor() {

@@ -23,6 +23,13 @@ class HiveProxyRepository implements ProxyRepository {
     for (var key in box.keys) {
       final data = box.get(key) as Map;
       final type = data['type'];
+
+      // Безопасное получение markers (для старых данных)
+      Map<String, dynamic> markersMap = {};
+      final markersData = data['markers'];
+      if (markersData is Map) {
+        markersMap = Map<String, dynamic>.from(markersData);
+      }
       
       if (type == 'mtproto') {
         proxies.add(MtprotoProxy(
@@ -33,6 +40,7 @@ class HiveProxyRepository implements ProxyRepository {
           fullLink: data['fullLink'],
           lastStatus: _stringToStatus(data['lastStatus']),
           lastPing: data['lastPing'],
+          markers: ProxyMarkers.fromJson(markersMap),
         ));
       } else if (type == 'socks5') {
         proxies.add(Socks5Proxy(
@@ -44,6 +52,7 @@ class HiveProxyRepository implements ProxyRepository {
           fullLink: data['fullLink'],
           lastStatus: _stringToStatus(data['lastStatus']),
           lastPing: data['lastPing'],
+          markers: ProxyMarkers.fromJson(markersMap),
         ));
       }
     }
@@ -62,6 +71,7 @@ class HiveProxyRepository implements ProxyRepository {
       'fullLink': proxy.fullLink,
       'lastStatus': proxy.lastStatus.name,
       'lastPing': proxy.lastPing,
+      'markers': proxy.markers.toJson(),
     };
     
     if (proxy is MtprotoProxy) {

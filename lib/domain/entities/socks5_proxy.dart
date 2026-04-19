@@ -25,6 +25,9 @@ class Socks5Proxy extends ProxyEntity {
   
   @override
   int? lastPing;
+  
+  @override
+  final ProxyMarkers markers;
 
   Socks5Proxy({
     String? id,
@@ -35,12 +38,15 @@ class Socks5Proxy extends ProxyEntity {
     required this.fullLink,
     this.lastStatus = ProxyStatus.unknown,
     this.lastPing,
-  }) : id = id ?? const Uuid().v4();
+    ProxyMarkers? markers,
+  }) : id = id ?? const Uuid().v4(),
+       markers = markers ?? const ProxyMarkers();
 
   @override
   Socks5Proxy copyWith({
     ProxyStatus? lastStatus,
     int? lastPing,
+    ProxyMarkers? markers,
   }) {
     return Socks5Proxy(
       id: id,
@@ -51,6 +57,7 @@ class Socks5Proxy extends ProxyEntity {
       fullLink: fullLink,
       lastStatus: lastStatus ?? this.lastStatus,
       lastPing: lastPing ?? this.lastPing,
+      markers: markers ?? this.markers,
     );
   }
 }
