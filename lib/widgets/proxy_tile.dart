@@ -151,9 +151,9 @@ class ProxyTile extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (markers.wifi > 0 && markers.wifi != 4)
+                              if (markers.wifi > 0 && markers.wifi != 5)
                                 _buildMarkerIcon(Icons.wifi, _getMarkerColor(markers.wifi)),
-                              if (markers.mobile > 0 && markers.mobile != 4)
+                              if (markers.mobile > 0 && markers.mobile != 5)
                                 _buildMarkerIcon(Icons.import_export, _getMarkerColor(markers.mobile)),
                             ],
                           ),
@@ -188,7 +188,8 @@ class ProxyTile extends StatelessWidget {
     switch (value) {
       case 1: return Colors.red;
       case 2: return Colors.orange;
-      case 3: return Colors.green;
+      case 3: return Colors.amber;      // желтый
+      case 4: return Colors.green;
       default: return Colors.grey;
     }
   }

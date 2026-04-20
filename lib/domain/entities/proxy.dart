@@ -3,13 +3,13 @@ enum ProxyStatus { unknown, online, offline }
 
 // Маркеры прокси
 class ProxyMarkers {
-  final int wifi;      // 0=не выбран, 1=красный, 2=оранжевый, 3=зеленый
-  final int mobile;    // 0=не выбран, 1=красный, 2=оранжевый, 3=зеленый
+  final int wifi;      // 0=не выбран, 1=красный, 2=оранжевый, 3=желтый, 4=зеленый, 5=серый(не отображать)
+  final int mobile;    // 0=не выбран, 1=красный, 2=оранжевый, 3=желтый, 4=зеленый, 5=серый(не отображать)
   final bool favorite; // true=желтая звезда, false=серая звезда
 
   const ProxyMarkers({
-    this.wifi = 0,
-    this.mobile = 0,
+    this.wifi = 5,        // по умолчанию серый (не отображать)
+    this.mobile = 5,      // по умолчанию серый (не отображать)
     this.favorite = false,
   });
 
@@ -32,8 +32,8 @@ class ProxyMarkers {
   };
 
   factory ProxyMarkers.fromJson(Map<String, dynamic> json) => ProxyMarkers(
-    wifi: json['wifi'] is int ? json['wifi'] : 0,
-    mobile: json['mobile'] is int ? json['mobile'] : 0,
+    wifi: json['wifi'] is int ? json['wifi'] :5,
+    mobile: json['mobile'] is int ? json['mobile'] : 5,
     favorite: json['favorite'] is bool ? json['favorite'] : false,
   );
 }

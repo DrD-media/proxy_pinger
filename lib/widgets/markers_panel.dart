@@ -15,7 +15,6 @@ class MarkersPanel extends StatefulWidget {
   State<MarkersPanel> createState() => _MarkersPanelState();
 }
 
-
 class _MarkersPanelState extends State<MarkersPanel> {
   late ProxyMarkers _currentMarkers;
 
@@ -72,9 +71,19 @@ class _MarkersPanelState extends State<MarkersPanel> {
                   ),
                   child: Row(
                     children: [
-                      Icon(_currentMarkers.favorite ? Icons.star : Icons.star_border, color: _currentMarkers.favorite ? Colors.amber : Colors.grey, size: 18),
+                      Icon(
+                        _currentMarkers.favorite ? Icons.star : Icons.star_border,
+                        color: _currentMarkers.favorite ? Colors.amber : Colors.grey,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
-                      Text('Избранное', style: TextStyle(fontSize: 12, color: _currentMarkers.favorite ? Colors.amber : Colors.grey)),
+                      Text(
+                        'Избранное',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _currentMarkers.favorite ? Colors.amber : Colors.grey,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -87,11 +96,12 @@ class _MarkersPanelState extends State<MarkersPanel> {
   }
 
   Widget _buildMarkerRow(String title, IconData icon, int currentValue, Function(int) onTap) {
-    final colors = [Colors.red, Colors.orange, Colors.green, Colors.grey];
+    // Цвета: красный, оранжевый, желтый, зеленый, серый
+    final colors = [Colors.red, Colors.orange, Colors.amber, Colors.green, Colors.grey];
     return Row(
       children: [
         SizedBox(width: 60, child: Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
-        ...List.generate(4, (index) {
+        ...List.generate(5, (index) {
           final isSelected = currentValue == index + 1;
           return GestureDetector(
             onTap: () => onTap(index + 1),
