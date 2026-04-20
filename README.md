@@ -131,11 +131,13 @@ lib/
 │   │   └── hive_history_repository.dart
 │   └── services/              # Сервисы
 │       ├── proxy_checker_service.dart  # Параллельная проверка
-│       └── link_parser_service.dart    # Парсинг ссылок
-├── providers/                  # Riverpod провайдеры
-│   ├── proxy_provider.dart
-│   ├── history_provider.dart
-│   └── selection_provider.dart
+│       ├── link_parser_service.dart    # Парсинг ссылок
+│       └── file_import_export_service.dart # Импорт/экспорт TXT/JSON файлов
+├── providers/                              # Riverpod провайдеры
+│   ├── proxy_provider.dart                 # Состояние списка прокси
+│   ├── history_provider.dart               # Состояние истории проверок
+│   ├── selection_provider.dart             # Режим множественного выбора
+│   └── sort_provider.dart                  # Настройки сортировки (умная/без)
 ├── screens/                    # Экраны
 │   ├── main_shell.dart        # BottomNavigation обертка
 │   ├── my_proxies_screen.dart # Главный экран
@@ -143,10 +145,13 @@ lib/
 │   ├── online_screen.dart     # Только доступные
 │   └── offline_screen.dart    # Только недоступные
 └── widgets/                    # Переиспользуемые виджеты
-    ├── proxy_tile.dart        # Плашка прокси
+    ├── proxy_tile.dart        # Плашка прокси (статус, тип, маркеры)
     ├── history_tile.dart      # Плашка истории
     ├── proxy_info_bottom_sheet.dart # Информация о прокси
-    └── add_proxy_bottom_sheet.dart # Добавление прокси
+    ├── markers_panel.dart                  # Панель выбора маркеров (Wi-Fi/Mobile/Избранное)
+    └── add_proxy_bottom_sheet.dart # Модальное окно добавления прокси (3 вкладки)
+    ├── add_proxy_manual_bottom_sheet.dart  # Форма ручного ввода прокси
+    └── sort_dialog.dart                    # Диалог выбора сортировки (2 режима)
 ```
 ## 📡 Как это работает
 
