@@ -6,6 +6,12 @@ import '../services/file_import_export_service.dart';
 import '../providers/proxy_provider.dart';
 import 'add_proxy_manual_bottom_sheet.dart';
 
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import '../domain/entities/mtproto_proxy.dart';
+import '../domain/entities/socks5_proxy.dart';
+import 'advanced_file_actions.dart';
+
 class AddProxyBottomSheet extends ConsumerStatefulWidget {
   const AddProxyBottomSheet({super.key});
 
@@ -215,6 +221,27 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> with 
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        
+        // Кнопки копирования в буфер обмена (без меток)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildCopyButton(
+              icon: Icons.copy,
+              label: 'TXT',
+              color: Colors.teal,
+              onTap: () => _copyToClipboard('txt'),
+            ),
+            const SizedBox(width: 24),
+            _buildCopyButton(
+              icon: Icons.copy,
+              label: 'JSON',
+              color: Colors.teal,
+              onTap: () => _copyToClipboard('json'),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         
         // Информационная строка
@@ -238,9 +265,92 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> with 
             ],
           ),
         ),
+        
+        const SizedBox(height: 24),
+        // Блок "Дополнительные способы" (с метками)
+        AdvancedFileActions(
+          fileName: _fileNameController.text,
+          customPath: _filePathController.text.trim().isEmpty ? null : _filePathController.text.trim(),
+        ),
+
         const SizedBox(height: 20),
       ],
     );
+  }
+
+  Widget _buildCopyButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  void _copyToClipboard(String type) async {
+    final proxies = await ref.read(proxyListProvider.future);
+    if (proxies.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нет прокси для копирования')),
+        );
+      }
+      return;
+    }
+    
+    String content = '';
+    
+    if (type == 'txt') {
+      // TXT: только ссылки
+      content = proxies.map((p) => p.fullLink).join('\n');
+    } else if (type == 'json') {
+      // JSON без маркеров
+      final jsonList = proxies.map((p) {
+        final Map<String, dynamic> map = {
+          'server': p.server,
+          'port': p.port,
+          'type': p.type.name,
+          'fullLink': p.fullLink,
+        };
+        if (p is MtprotoProxy) {
+          map['secret'] = p.secret;
+        }
+        if (p is Socks5Proxy) {
+          if (p.username != null) map['username'] = p.username!;
+          if (p.password != null) map['password'] = p.password!;
+        }
+        return map;
+      }).toList();
+      content = const JsonEncoder.withIndent('  ').convert(jsonList);
+    }
+    
+    await Clipboard.setData(ClipboardData(text: content));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📋 Скопировано в буфер обмена (${type.toUpperCase()})'),
+          backgroundColor: Colors.teal,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
   
   Widget _buildPlatformSelector({
