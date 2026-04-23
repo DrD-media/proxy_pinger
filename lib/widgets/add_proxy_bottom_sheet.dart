@@ -12,6 +12,9 @@ import '../domain/entities/mtproto_proxy.dart';
 import '../domain/entities/socks5_proxy.dart';
 import 'advanced_file_actions.dart';
 
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+
 class AddProxyBottomSheet extends ConsumerStatefulWidget {
   const AddProxyBottomSheet({super.key});
 
@@ -23,6 +26,7 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> with 
   final _linkController = TextEditingController();
   bool _isSingleMode = true; // true = одна ссылка, false = несколько ссылок
   late final TabController _tabController;
+  String _windowsDownloadsPath = 'C:\\Users\\User\\Downloads';
   
   // Контроллеры для экспорта
   final _fileNameController = TextEditingController();
@@ -37,6 +41,18 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> with 
     // Устанавливаем дефолтный путь (пусть будет пустым - будем использовать Downloads)
     _filePathController.text = '';
     _tabController = TabController(length: 3, vsync: this, initialIndex: 1); 
+    _getWindowsDownloadsPath();
+  }
+
+  Future<void> _getWindowsDownloadsPath() async {
+    if (Platform.isWindows) {
+      final directory = await getDownloadsDirectory();
+      if (directory != null) {
+        setState(() {
+          _windowsDownloadsPath = directory.path;
+        });
+      }
+    }
   }
   
   @override
@@ -160,7 +176,7 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> with 
               value: 'windows',
               label: 'Windows',
               icon: Icons.computer,
-              defaultPath: r'C:\Users\Ефим\Downloads',
+              defaultPath: _windowsDownloadsPath,
             ),
           ],
         ),
