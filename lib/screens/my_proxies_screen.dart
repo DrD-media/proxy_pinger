@@ -402,6 +402,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     
     await ref.read(historyRepositoryProvider).addSnapshot(updated);
     ref.invalidate(proxyListProvider);
+    ref.invalidate(historyListProvider);  // ← ДОБАВЬ ЭТУ СТРОКУ!
     
     if (mounted) {
       final onlineCount = updated.where((p) => p.lastStatus == ProxyStatus.online).length;
@@ -445,6 +446,7 @@ class _MyProxiesScreenState extends ConsumerState<MyProxiesScreen> {
     
     await ref.read(historyRepositoryProvider).addSnapshot(updated);
     ref.invalidate(proxyListProvider);
+    ref.invalidate(historyListProvider);  // ← ДОБАВЬ ЭТУ СТРОКУ!
     
     if (mounted) {
       final onlineCount = updated.where((p) => p.lastStatus == ProxyStatus.online).length;
