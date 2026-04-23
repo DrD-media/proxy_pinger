@@ -13,8 +13,10 @@ class AddProxyBottomSheet extends ConsumerStatefulWidget {
   ConsumerState<AddProxyBottomSheet> createState() => _AddProxyBottomSheetState();
 }
 
-class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
+class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> with SingleTickerProviderStateMixin {
   final _linkController = TextEditingController();
+  bool _isSingleMode = true; // true = одна ссылка, false = несколько ссылок
+  late final TabController _tabController;
   
   // Контроллеры для экспорта
   final _fileNameController = TextEditingController();
@@ -28,21 +30,23 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
     _fileNameController.text = 'proxy_backup';
     // Устанавливаем дефолтный путь (пусть будет пустым - будем использовать Downloads)
     _filePathController.text = '';
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 1); 
   }
   
   @override
   void dispose() {
     _fileNameController.dispose();
     _filePathController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
   
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      minChildSize: 0.55,
-      maxChildSize: 0.92,
+      initialChildSize: 0.95, // было 0.75, теперь почти на весь экран
+      minChildSize: 0.75,     // было 0.55
+      maxChildSize: 0.95,     // было 0.92
       expand: false,
       builder: (context, scrollController) {
         return Container(
@@ -73,39 +77,38 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
               
               // Вкладки (TabBar)
               Expanded(
-                child: DefaultTabController(
-                  length: 3,
-                  child: Column(
-                    children: [
-                      const TabBar(
-                        indicatorColor: Colors.blue,
-                        labelColor: Colors.blue,
-                        unselectedLabelColor: Colors.grey,
-                        tabs: [
-                          Tab(icon: Icon(Icons.folder), text: 'Файлом'),
-                          Tab(icon: Icon(Icons.link), text: 'По ссылке'),
-                          Tab(icon: Icon(Icons.edit_note), text: 'Вручную'),
+                child: Column(
+                  children: [
+                    TabBar(
+                      controller: _tabController,
+                      indicatorColor: Colors.blue,
+                      labelColor: Colors.blue,
+                      unselectedLabelColor: Colors.grey,
+                      tabs: const [
+                        Tab(icon: Icon(Icons.folder), text: 'Файлом'),
+                        Tab(icon: Icon(Icons.link), text: 'По ссылке'),
+                        Tab(icon: Icon(Icons.edit_note), text: 'Вручную'),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          // Вкладка: Файлом
+                          SingleChildScrollView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.all(16),
+                            child: _buildFileTab(),
+                          ),
+                          // Вкладка: По ссылке
+                          _buildLinkTab(scrollController),
+                          // Вкладка: Вручную
+                          const AddProxyManualBottomSheet(),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            // Вкладка: Файлом
-                            SingleChildScrollView(
-                              controller: scrollController,
-                              padding: const EdgeInsets.all(16),
-                              child: _buildFileTab(),
-                            ),
-                            // Вкладка: По ссылке
-                            _buildLinkTab(scrollController),
-                            // Вкладка: Вручную
-                            const AddProxyManualBottomSheet(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -114,7 +117,7 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
       },
     );
   }
-  
+
   Widget _buildFileTab() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +153,7 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
             _buildPlatformSelector(
               value: 'windows',
               label: 'Windows',
-              icon: Icons.computer,  // Исправлено: Icons.windows не существует, используем Icons.computer
+              icon: Icons.computer,
               defaultPath: r'C:\Users\Ефим\Downloads',
             ),
           ],
@@ -470,16 +473,60 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // Переключатели режимов вставки
+          Container(
+            width: double.infinity,  // ← ДОБАВЛЕНО, чтобы контейнер занял всю ширину
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(  // ← ВМЕСТО Flexible, чтобы кнопки были одинаковой ширины
+                  child: _buildInsertModeSelector(
+                    label: 'Вставить одну',
+                    isSelected: _isSingleMode,
+                    onTap: () => setState(() {
+                      _isSingleMode = true;
+                      _linkController.clear();
+                    }),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: _buildInsertModeSelector(
+                    label: 'Вставить несколько',
+                    isSelected: !_isSingleMode,
+                    onTap: () => setState(() {
+                      _isSingleMode = false;
+                      _linkController.clear();
+                    }),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Динамическое текстовое поле
           TextField(
             controller: _linkController,
-            decoration: const InputDecoration(
-              labelText: 'Вставьте ссылку tg://proxy или socks5://',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: _isSingleMode 
+                  ? 'Вставьте ссылку tg://proxy или socks5://'
+                  : 'Вставьте ссылки (каждая с новой строки)',
+              border: const OutlineInputBorder(),
+              alignLabelWithHint: true,
             ),
-            maxLines: 3,
+            maxLines: _isSingleMode ? 1 : 11,  // 1 : 9
+            minLines: _isSingleMode ? 1 : 10,  // 1 : 3
             autofocus: false,
           ),
           const SizedBox(height: 24),
+          
+          // Кнопка добавления
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -496,43 +543,117 @@ class _AddProxyBottomSheetState extends ConsumerState<AddProxyBottomSheet> {
       ),
     );
   }
-  
-  void _addProxyFromLink() async {
-    final link = _linkController.text.trim();
-    if (link.isEmpty) return;
-    
-    try {
-      final proxy = LinkParserService.fromLink(link);
-      final isAdded = await ref.read(proxyRepositoryProvider).addIfNotExists(proxy);
+
+    Widget _buildInsertModeSelector({
+      required String label,
+      required bool isSelected,
+      required VoidCallback onTap,
+    }) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),  // уменьшены отступы horizontal: 16, vertical: 8
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.blue : Colors.transparent,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade700,
+                fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                fontSize: 13, // чуть меньше шрифт
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    void _addProxyFromLink() async {
+      final text = _linkController.text.trim();
+      if (text.isEmpty) return;
       
-      if (isAdded && mounted) {
-        ref.invalidate(proxyListProvider);
-        _linkController.clear();
-        Navigator.pop(context);
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Прокси добавлен'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⚠️ Такой прокси уже существует'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+      List<String> links = [];
+      
+      if (_isSingleMode) {
+        // Режим одной ссылки
+        links = [text];
+      } else {
+        // Режим нескольких ссылок - разделяем по строкам
+        links = text.split('\n')
+            .map((line) => line.trim())
+            .where((line) => line.isNotEmpty)
+            .toList();
       }
-    } catch (e) {
-      if (mounted) {
+      
+      if (links.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Ошибка: $e'),
+          const SnackBar(
+            content: Text('❌ Не найдено ссылок для добавления'),
             backgroundColor: Colors.red,
           ),
         );
+        return;
+      }
+      
+      int added = 0;
+      int invalid = 0;
+      int duplicates = 0;
+      
+      for (final link in links) {
+        try {
+          final proxy = LinkParserService.fromLink(link);
+          final isAdded = await ref.read(proxyRepositoryProvider).addIfNotExists(proxy);
+          
+          if (isAdded) {
+            added++;
+          } else {
+            duplicates++;
+          }
+        } catch (e) {
+          invalid++;
+        }
+      }
+      
+      // Обновляем список и очищаем поле
+      if (added > 0) {
+        ref.invalidate(proxyListProvider);
+        _linkController.clear();
+      }
+      
+      if (mounted) {
+        String message = '';
+        if (added > 0) message += '✅ Добавлено: $added';
+        if (invalid > 0) message += '\n⚠️ Невалидных: $invalid';
+        if (duplicates > 0) message += '\n📋 Дубликатов: $duplicates';
+
+        // Определяем цвет в зависимости от результата
+        Color backgroundColor;
+        if (added > 0 && invalid == 0 && duplicates == 0) {
+          backgroundColor = Colors.green;
+        } else if (added > 0 && (invalid > 0 || duplicates > 0)) {
+          backgroundColor = Colors.orange; // Частичный успех
+        } else if (duplicates > 0 && added == 0 && invalid == 0) {
+          backgroundColor = Colors.orange; // Только дубликаты
+        } else {
+          backgroundColor = Colors.red; // Только ошибки
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: backgroundColor,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        
+        // Если ничего не добавлено, закрываем окно только если была одна ссылка и она невалидна
+        if (added == 0 && _isSingleMode) {
+          Navigator.pop(context);
+        }
       }
     }
-  }
 }
